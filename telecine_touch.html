@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>JC TV STREAMING</title>
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;e
+            padding: 0;
+        }
+        
+        iframe {
+            display: block;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+    </style>
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-H018K51RR8"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-H018K51RR8');
+</script>
+
+
+</head>
+<body>
+<iframe src="https://redecanaistv.ee/play.php?categoria=live&canal=telecinetouch"  allow="encrypted-media" allowfullscreen="" frameborder="0" width="100%" height="100%"></iframe>
+<!-- Tela de Alerta -->
+<div id="bloqueio" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:black;z-index:99999;color:white;font-family:sans-serif;text-align:center;padding-top:100px;">
+  <img src="https://www.mediafire.com/convkey/7a81/hl79s61t5v9c0555g.jpg" alt="Logo" style="width:150px;height:auto;margin-bottom:30px;">
+  <h1 style="font-size:40px;">ACESSO NÃO AUTORIZADO</h1>
+</div>
+
+<script>
+  // Mostrar o alerta e recarregar após 2 segundos
+  function mostrarAlerta() {
+    const tela = document.getElementById("bloqueio");
+    tela.style.display = "block";
+    setTimeout(() => {
+      location.reload();
+    }, 1000);
+  }
+
+  // Força todos os links a abrirem na mesma aba
+  document.querySelectorAll('a').forEach(link => {
+    link.setAttribute('target', '_self');
+  });
+
+  // Bloqueia ações de desenvolvedor (com alerta)
+  document.addEventListener('keydown', function(e) {
+    const tecla = e.key.toLowerCase();
+    if (
+      e.key === "F12" ||
+      (e.ctrlKey && tecla === 'u') ||
+      (e.ctrlKey && tecla === 's') ||
+      (e.ctrlKey && e.shiftKey && ['i', 'j', 'c'].includes(tecla))
+    ) {
+      e.preventDefault();
+      mostrarAlerta();
+    }
+  });
+
+  // Bloqueia botão direito (sem alerta)
+  window.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+  });
+</script>
+</body>
+</html>
