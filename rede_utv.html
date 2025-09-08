@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JC TV STREAMING</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: #000;
+      overflow: hidden;
+    }
+    #playerWrapper, #player, #embedContainer {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0; left: 0;
+    }
+    #embedContainer {
+      display: none;
+      z-index: 0;
+    }
+    #player .clappr-watermark {
+      display: none !important;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@clappr/player@latest/dist/clappr.min.js"></script>
+</head>
+<body>
+
+  <div id="playerWrapper">
+    <div id="player"></div>
+    <div id="embedContainer">
+      <iframe id="embedFrame" src="" frameborder="0" allowfullscreen style="width:100%; height:100%;"></iframe>
+    </div>
+  </div>
+
+  <script>
+    const m3u8Links = ["https://streamer.sattvacabo.com.br/REDE_UTV/index.m3u8?token=TLGacFXd0gIXIuo2u8Zj7f4FE5J2vtgf"];
+    const mpdLinks = [];
+    const embedUrl = "#";
+
+    let currentIndex = 0;
+    let attemptCount = 0;
+    const maxAttempts = 2;
+    let isPlaying = false;
+    let usingEmbed = false;
+    let tryingM3u8 = true;
+
+    const playerContainer = document.getElementById('player');
+    const embedContainer = document.getElementById('embedContainer');
+    const embedFrame = document.getElementById('embedFrame');
+
+    let player = null;
+
+    function createPlayer(sourceUrl, mimeType) {
+      if (player) {
+        player.destroy();
+        player = null;
+      }
+
+      player = new Clappr.Player({
+        source: sourceUrl,
+        mimeType: mimeType,
+        parentId: '#player',
+        width: '100%',
+        height: '100%',
+        autoPlay: false,
+        mute: false,
+        disableErrorScreen: true,
+      });
+
+      let played = false;
+      let timeout = setTimeout(() => {
+        if (!played && !usingEmbed) nextLink();
+      }, 15000);
+
+      player.listenToOnce(player, Clappr.Events.PLAYER_READY, () => {
+        player.setVolume(100);
+      });
+
+      player.listenTo(player, Clappr.Events.PLAYER_PLAY, () => {
+        player.setVolume(100);
+        let tries = 0;
+        const volInterval = setInterval(() => {
+          if (!player) return clearInterval(volInterval);
+          player.setVolume(100);
+          if (++tries >= 5) clearInterval(volInterval);
+        }, 300);
+        played = true;
+        clearTimeout(timeout);
+        isPlaying = true;
+      });
+
+      player.listenTo(player, Clappr.Events.PLAYER_ERROR, () => {
+        clearTimeout(timeout);
+        if (!usingEmbed) nextLink();
+      });
+    }
+
+    function loadLink(index, isM3u8) {
+      usingEmbed = false;
+      embedContainer.style.display = 'none';
+      playerContainer.style.display = 'block';
+      const sourceUrl = isM3u8 ? m3u8Links[index] : mpdLinks[index];
+      const mimeType = isM3u8 ? "application/x-mpegURL" : "application/dash+xml";
+      createPlayer(sourceUrl, mimeType);
+      setTimeout(() => {
+        if (player) player.play();
+      }, 500);
+    }
+
+    function loadEmbed() {
+      usingEmbed = true;
+      if (player) {
+        try { player.destroy(); } catch(e) {}
+        player = null;
+      }
+      playerContainer.style.display = 'none';
+      embedContainer.style.display = 'block';
+      embedFrame.src = embedUrl;
+    }
+
+    function nextLink() {
+      if (!navigator.onLine) return;
+
+      if (tryingM3u8) {
+        currentIndex++;
+        if (currentIndex >= m3u8Links.length) {
+          attemptCount++;
+          if (attemptCount >= maxAttempts) {
+            if (mpdLinks.length > 0) {
+              tryingM3u8 = false;
+              currentIndex = 0;
+              attemptCount = 0;
+            } else {
+              loadEmbed();
+              return;
+            }
+          } else {
+            currentIndex = 0;
+          }
+        }
+        if (!usingEmbed && tryingM3u8) loadLink(currentIndex, true);
+      } else {
+        currentIndex++;
+        if (currentIndex >= mpdLinks.length) {
+          attemptCount++;
+          if (attemptCount >= maxAttempts) {
+            loadEmbed();
+            return;
+          } else {
+            currentIndex = 0;
+          }
+        }
+        if (!usingEmbed) loadLink(currentIndex, false);
+      }
+    }
+
+    let lastPosition = 0;
+    setInterval(() => {
+      if (!isPlaying || usingEmbed || !player || !navigator.onLine) return;
+      const state = player.getPlaybackState?.();
+      const pos = player.getCurrentTime?.();
+      if (state === 'playing' && pos === lastPosition) nextLink();
+      else lastPosition = pos;
+    }, 30000);
+
+    window.addEventListener('load', () => {
+      loadLink(0, true);
+    });
+
+    window.addEventListener('online', () => {
+      if (usingEmbed) {
+        embedFrame.src = "";
+        embedContainer.style.display = 'none';
+        playerContainer.style.display = 'block';
+        currentIndex = 0;
+        attemptCount = 0;
+        usingEmbed = false;
+        tryingM3u8 = true;
+        loadLink(currentIndex, true);
+      }
+      if (isPlaying && player) player.play();
+    });
+
+    // Proteção contra inspeção e salvamento
+    document.addEventListener('keydown', function(e) {
+      const tecla = e.key.toLowerCase();
+      if (
+        e.key === "F12" ||
+        (e.ctrlKey && ['u', 's'].includes(tecla)) ||
+        (e.ctrlKey && e.shiftKey && ['i', 'j', 'c'].includes(tecla))
+      ) {
+        e.preventDefault();
+      }
+    });
+
+    window.addEventListener('contextmenu', function(e) {
+      e.preventDefault();
+    });
+  </script>
+<!-- Tela de Alerta -->
+<div id="bloqueio" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:black;z-index:99999;color:white;font-family:sans-serif;text-align:center;padding-top:100px;">
+  <img src="https://www.mediafire.com/convkey/7a81/hl79s61t5v9c0555g.jpg" alt="Logo" style="width:150px;height:auto;margin-bottom:30px;">
+  <h1 style="font-size:40px;">ACESSO NÃO AUTORIZADO</h1>
+</div>
+
+<script>
+  // Mostrar o alerta e recarregar após 2 segundos
+  function mostrarAlerta() {
+    const tela = document.getElementById("bloqueio");
+    tela.style.display = "block";
+    setTimeout(() => {
+      location.reload();
+    }, 1000);
+  }
+
+  // Força todos os links a abrirem na mesma aba
+  document.querySelectorAll('a').forEach(link => {
+    link.setAttribute('target', '_self');
+  });
+
+  // Bloqueia ações de desenvolvedor (com alerta)
+  document.addEventListener('keydown', function(e) {
+    const tecla = e.key.toLowerCase();
+    if (
+      e.key === "F12" ||
+      (e.ctrlKey && tecla === 'u') ||
+      (e.ctrlKey && tecla === 's') ||
+      (e.ctrlKey && e.shiftKey && ['i', 'j', 'c'].includes(tecla))
+    ) {
+      e.preventDefault();
+      mostrarAlerta();
+    }
+  });
+
+  // Bloqueia botão direito (sem alerta)
+  window.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+  });
+</script>
+</body>
+</html>
